@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+    <title>生日快乐</title>
+
+    <!-- 使用CDN加速CSS和JS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/你的GitHub用户名/仓库名@main/style.css">
+
+    <style>
+        /* 备用样式，如果CDN加载失败则使用本地 */
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{
+            font-family:'Microsoft YaHei',sans-serif;
+            background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+            overflow:hidden;height:100vh;
+            position:relative
+        }
+        /* 其他样式保持不变... */
+    </style>
+</head>
+<body>
+    <div id="wrapper">
+        <div id="loadingTip">
+            <div class="loader"></div>
+            <p>准备中...<br><small id="loadStatus">加载资源</small></p>
+        </div>
+        <div id="background"></div>
+        <div id="firstWindow">
+            <h1>oi！派大星</h1>
+            <button id="startBtn">开始惊喜</button>
+        </div>
+
+        <!-- 多重音频源，确保至少一个可用 -->
+        <div id="audioCtrl" style="display:none">
+            <audio id="m" loop preload="auto">
+                <source src="生日歌.mp3" type="audio/mp3">
+                <!-- 方案1: jsDelivr CDN -->
+                <source src="https://cdn.jsdelivr.net/gh/pythoner-ai/ddweb@main/生日歌.mp3" type="audio/mp3">
+
+                <!-- 方案2: 原始GitHub Pages -->
+                <source src="https://pythoner-ai.github.io/ddweb/生日歌.mp3" type="audio/mp3">
+
+                <!-- 方案3: 使用GitHub原始文件 -->
+                <source src="https://raw.githubusercontent.com/pythoner-ai/ddweb/main/生日歌.mp3" type="audio/mp3">
+
+                <!-- 方案4: 备用在线音频 -->
+                <source src="https://assets.mixkit.co/music/preview/mixkit-happy-birthday-428.mp3" type="audio/mp3">
+            </audio>
+        </div>
+
+        <div id="audioStatus"></div>
+    </div>
+
+    <!-- 使用CDN加速JS -->
+    <script src="https://cdn.jsdelivr.net/gh/pythoner-ai/ddweb@main/script.js"></script>
+
+    <script>
+        // 本地备用脚本
+        // 核心数据
+        const tips = ['多喝水哦~','保持微笑呀','每天元气满满','记得吃水果','保持好心情','好好爱自己','心想事成','梦想成真','天天向上','顺顺利利','早点休息','别熬夜','开心每一天','天冷加衣','晚安'];
+        const colorClasses = ['color-1','color-2','color-3','color-4','color-5'];
+        const birthdayColors = ['#ff4081','#ff9800','#4caf50','#2196f3','#9c27b0'];
+        const birthdayTexts = ['生日快乐','Happy Birthday','生日大快乐','天天开心'];
+
+        // 资源加载监控
+        const loadStatus = document.getElementById('loadStatus');
+        let resourcesLoaded = 0;
+        const totalResources = 2; // CSS + 音频
+
+        function updateLoadStatus() {
+            resourcesLoaded++;
+            const percent = Math.round((resourcesLoaded / totalResources) * 100);
+            loadStatus.textContent = `加载资源 ${percent}%`;
+
+            if (resourcesLoaded === totalResources) {
+                loadStatus.textContent = '准备就绪！';
+            }
+        }
+
+        // 音频预加载策略
+        function loadAudioWithFallback(audioElement) {
+            const sources = audioElement.getElementsByTagName('source');
+            let currentSourceIndex = 0;
+
+            function tryNextSource() {
+                if (currentSourceIndex >= sources.length) {
+                    console.log('所有音频源都加载失败');
+                    updateLoadStatus();
+                    return;
+                }
+
+                const source = sources[currentSourceIndex];
+                console.log(`尝试加载音频源: ${source.src}`);
+
+                audioElement.src = source.src;
+                audioElement.load();
+
+                audioElement.oncanplaythrough = () => {
+                    console.log(`音频源加载成功: ${source.src}`);
+                    updateLoadStatus();
+                };
+
+                audioElement.onerror = () => {
+                    console.log(`音频源加载失败: ${source.src}`);
+                    currentSourceIndex++;
+                    setTimeout(tryNextSource, 100);
+                };
+
+                // 设置超时
+                setTimeout(() => {
+                    if (audioElement.networkState === audioElement.NETWORK_LOADING) {
+                        console.log(`音频源加载超时: ${source.src}`);
+                        currentSourceIndex++;
+                        tryNextSource();
+                    }
+                }, 5000);
+            }
+
+            tryNextSource();
+        }
+
+        // DOM元素
+        const m = document.getElementById('m');
+        const loadingTip = document.getElementById('loadingTip');
+        const firstWindow = document.getElementById('firstWindow');
+        const startBtn = document.getElementById('startBtn');
+        const background = document.getElementById('background');
+        const wrapper = document.getElementById('wrapper');
+        const audioCtrl = document.getElementById('audioCtrl');
+        const audioStatus = document.getElementById('audioStatus');
+
+        const isMobile = window.innerWidth < 768;
+        let windows = [], currentTipIndex = 0, isAudioPlaying = false, userInteracted = false;
+
+        // 配置参数
+        const config = {
+            gap: isMobile ? 50 : 60,
+            tipFontSize: isMobile ? '16px' : '18px',
+            starCount: isMobile ? 40 : 80,
+            floatCount: isMobile ? 3 : 8,
+            totalWindows: 100,
+            interval: isMobile ? 1000 : 600,
+            maxAttempts: 200
+        };
+
+        // 初始化
+        window.onload = () => {
+            console.log('页面开始加载');
+
+            if (isMobile) {
+                audioCtrl.style.display = 'block';
+            }
+
+            // 开始加载音频
+            loadAudioWithFallback(m);
+
+            createStars();
+            createFloatElements();
+            createBirthdayTexts();
+            bindAudioEvents();
+
+            setTimeout(() => {
+                loadingTip.style.transition = 'opacity 0.5s ease';
+                loadingTip.style.opacity = 0;
+                setTimeout(() => loadingTip.style.display = 'none', 500);
+            }, 1500);
+        };
+
+        // 音频事件处理
+        function bindAudioEvents() {
+            const playAudio = () => {
+                if (!userInteracted) {
+                    userInteracted = true;
+
+                    if (!isAudioPlaying && m.readyState >= 2) {
+                        audioStatus.style.display = 'block';
+                        audioStatus.textContent = '准备播放音频...';
+
+                        m.muted = false;
+                        m.volume = isMobile ? 0.8 : 0.6;
+
+                        const playPromise = m.play();
+
+                        if (playPromise !== undefined) {
+                            playPromise.then(() => {
+                                isAudioPlaying = true;
+                                audioStatus.textContent = '🎵 音乐播放中';
+                                if (isMobile) audioCtrl.style.opacity = 0.3;
+
+                                setTimeout(() => {
+                                    audioStatus.style.display = 'none';
+                                }, 2000);
+                            }).catch(err => {
+                                console.log('音频播放被阻止:', err);
+                                audioStatus.textContent = '点击页面启用音频';
+                                setTimeout(() => {
+                                    audioStatus.style.display = 'none';
+                                }, 3000);
+                            });
+                        }
+                    }
+                }
+            };
+
+            document.addEventListener('click', playAudio);
+            document.addEventListener('touchstart', playAudio, {passive: true});
+            document.addEventListener('keydown', playAudio);
+            startBtn.addEventListener('click', playAudio);
+        }
+
+        // 其余函数保持不变...
+        function createStars() {
+            for (let i = 0; i < config.starCount; i++) {
+                const star = document.createElement('div');
+                const size = Math.random() * 2 + 1;
+                star.className = 'star';
+                star.style.cssText = `
+                    width:${size}px;height:${size}px;
+                    left:${Math.random()*100}%;top:${Math.random()*100}%;
+                    animation-delay:${Math.random()*3}s
+                `;
+                background.appendChild(star);
+            }
+        }
+
+        function createFloatElements() {
+            ['🎈','🎁','🎂'].forEach((emoji, i) => {
+                for (let j = 0; j < config.floatCount; j++) {
+                    const el = document.createElement('div');
+                    el.className = 'birthday-element';
+                    el.innerHTML = emoji;
+                    el.style.cssText = `
+                        font-size:${isMobile ? 18+i*2 : 25+i*5}px;
+                        color:${birthdayColors[Math.floor(Math.random()*birthdayColors.length)]};
+                        left:${Math.random()*100}%;
+                        animation-delay:${Math.random()*20}s
+                    `;
+                    background.appendChild(el);
+                }
+            });
+        }
+
+        function createBirthdayTexts() {
+            const containerWidth = window.innerWidth;
+            const textPositions = [];
+
+            birthdayTexts.forEach((text, i) => {
+                const el = document.createElement('div');
+                el.className = 'birthday-text';
+                el.textContent = text;
+                el.style.fontSize = isMobile ? '5vw' : '28px';
+                el.style.color = birthdayColors[i % birthdayColors.length];
+                el.style.animationDelay = `${i * 0.3}s`;
+
+                document.body.appendChild(el);
+                const textWidth = el.offsetWidth;
+                document.body.removeChild(el);
+
+                let leftPos, attempts = 0, valid = false;
+                while (!valid && attempts < 20) {
+                    leftPos = Math.max(20, Math.random() * (containerWidth - textWidth - 40));
+                    valid = textPositions.every(pos =>
+                        leftPos + textWidth < pos.left || leftPos > pos.left + pos.width
+                    );
+                    attempts++;
+                }
+
+                textPositions.push({left: leftPos, width: textWidth});
+                el.style.left = `${leftPos}px`;
+                el.style.top = `${15 + i * 18}%`;
+                background.appendChild(el);
+            });
+        }
+
+        startBtn.onclick = () => {
+            firstWindow.style.display = 'none';
+            for (let batch = 0; batch < 10; batch++) {
+                for (let i = 0; i < 10; i++) {
+                    const delay = (batch * 10 + i) * config.interval;
+                    setTimeout(createWindow, delay);
+                }
+            }
+        };
+
+        function validPos(x, y, width, height) {
+            const {innerWidth: w, innerHeight: h} = window;
+            if (x < 20 || y < 20 || x + width > w - 20 || y + height > h - 20)
+                return false;
+
+            return windows.every(win => {
+                const r = win.getBoundingClientRect();
+                return Math.hypot(x - r.left, y - r.top) > (width + config.gap) * 0.9;
+            });
+        }
+
+        function getPos(width, height) {
+            const {innerWidth: w, innerHeight: h} = window;
+            let attempts = 0;
+
+            while (attempts++ < config.maxAttempts) {
+                let region = Math.floor(Math.random() * 4);
+                let x, y;
+
+                switch(region) {
+                    case 0:
+                        x = 20 + Math.random() * (w/2 - width - 40);
+                        y = 20 + Math.random() * (h/2 - height - 40);
+                        break;
+                    case 1:
+                        x = w/2 + Math.random() * (w/2 - width - 40);
+                        y = 20 + Math.random() * (h/2 - height - 40);
+                        break;
+                    case 2:
+                        x = 20 + Math.random() * (w/2 - width - 40);
+                        y = h/2 + Math.random() * (h/2 - height - 40);
+                        break;
+                    case 3:
+                        x = w/2 + Math.random() * (w/2 - width - 40);
+                        y = h/2 + Math.random() * (h/2 - height - 40);
+                        break;
+                }
+
+                if (validPos(x, y, width, height)) return {x, y};
+            }
+
+            return {
+                x: Math.min(20 + Math.random() * (w - width - 40), w - width - 20),
+                y: Math.min(20 + Math.random() * (h - height - 40), h - height - 20)
+            };
+        }
+
+        function createWindow() {
+            if (currentTipIndex >= tips.length) currentTipIndex = 0;
+            const tipText = tips[currentTipIndex];
+
+            const tempWin = document.createElement('div');
+            tempWin.className = 'tip-window';
+            tempWin.style.visibility = 'hidden';
+            tempWin.style.fontSize = config.tipFontSize;
+            tempWin.innerHTML = `<div style="color:#333;font-weight:bold;">${tipText}</div>`;
+            document.body.appendChild(tempWin);
+
+            const width = tempWin.offsetWidth;
+            const height = tempWin.offsetHeight;
+            document.body.removeChild(tempWin);
+
+            const {x, y} = getPos(width, height);
+            const win = document.createElement('div');
+            win.className = `tip-window ${colorClasses[Math.floor(Math.random()*colorClasses.length)]}`;
+            win.style.left = `${x}px`;
+            win.style.top = `${y}px`;
+            win.style.fontSize = config.tipFontSize;
+            win.innerHTML = `<div style="color:#333;font-weight:bold;">${tipText}</div>`;
+            wrapper.appendChild(win);
+            windows.push(win);
+
+            currentTipIndex++;
+        }
+
+        window.addEventListener('error', (e) => {
+            console.error('页面错误:', e);
+            loadingTip.style.opacity = 0;
+            setTimeout(() => loadingTip.style.display = 'none', 500);
+        });
+    </script>
+</body>
+</html>
